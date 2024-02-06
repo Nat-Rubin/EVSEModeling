@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib import image as mpimg
 from matplotlib.patches import Circle
 import pandas as pd
 import re
@@ -30,21 +31,22 @@ def main():
             wkt_n_dict[name].append(tuple(wkt_as_floats))
             wkt_as_floats = []
 
-    for index, row in df_pl.iterrows():
-        x_coord = row["X"]
-        y_coord = row["Y"]
-        coords_pl.append((x_coord, y_coord))
-
     for index, row in df_m.iterrows():
         x_coord = row["X / Weights"]
         y_coord = row["Y / Weights"]
         coords_m.append((x_coord, y_coord))
 
-    graph_plot(coords_pl, wkt_n_dict, neighborhoods_names, coords_m)
+    graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m)
 
 
-def graph_plot(coords_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
-    fig = plt.figure(figsize=(10, 8), dpi=300)
+def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
+    x_min = 34.920000
+    x_max = 34.975000
+    y_min = 29.530000
+    y_max = 29.573000
+
+    # img = mpimg.imread("Eilat.png")
+    fig = plt.figure(figsize=(8, 6), dpi=150)
     ax1 = fig.add_subplot(111)
 
     coords_n = []
@@ -58,30 +60,44 @@ def graph_plot(coords_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
         ax1.fill(x_n, y_n, color='lightblue', alpha=0.5)
         coords_n = []
 
-    x_pl = [coord[0] for coord in coords_pl]
-    y_pl = [coord[1] for coord in coords_pl]
+    for index, row in df_pl.iterrows():
+        colors = ["lightblue", "blue", "darkblue"]
+        weight = row["Weight"]
+        color = colors[weight-1]
+        x_coord = row["X"]
+        y_coord = row["Y"]
+        ax1.scatter(x_coord, y_coord, s=10*weight, color=color)
 
+    # x_pl = [coord[0] for coord in coords_pl]
+    # y_pl = [coord[1] for coord in coords_pl]
+
+    # median coords
     x_m = [coord[0] for coord in coords_m]
     y_m = [coord[1] for coord in coords_m]
 
-    for coords in coords_m:
-        center = (coords[0], coords[1])
-        meters = 200.0
+    # circles
+    # for coords in coords_m:
+    #     center = (coords[0], coords[1])
+    #     meters = 200.0
+    #
+    #     for i in range(0, 1):
+    #         radius = meters / 111_111.11
+    #         print(radius)
+    #         circle = Circle(center, radius, color='red', fill=False)
+    #         ax1.add_artist(circle)
+    #         meters += 200
 
+    # x_img = []
+    # ax1.imshow(img, extent=(x_min+.001, x_max, y_min, y_max))
+    # ax1.set_aspect('equal', adjustable='box')
 
-        for i in range(0, 1):
-            radius = meters / 111_111.11
-            print(radius)
-            circle = Circle(center, radius, color='red', fill=False)
-            ax1.add_artist(circle)
-            meters += 200
-
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
     plt.xlabel("X axis")
     plt.ylabel("Y axis")
     plt.title("Parking Lots and Chargers")
 
-    ax1.scatter(x_pl, y_pl, s=30)
-    ax1.scatter(x_m, y_m, s=30, color='red')
+    ax1.scatter(x_m, y_m, s=10, color='red')
     # plt.legend()
     plt.grid(False)
     plt.show()
