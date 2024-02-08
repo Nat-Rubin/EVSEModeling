@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from matplotlib import image as mpimg
+import numpy as np
+from matplotlib import image as mpimg, transforms
 from matplotlib.patches import Circle
 import pandas as pd
 import re
@@ -40,12 +41,19 @@ def main():
 
 
 def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
-    x_min = 34.920000
-    x_max = 34.975000
-    y_min = 29.530000
-    y_max = 29.573000
+    # Boundaries for graph. Changing these will change the image size (change at your own risk!!!)
+    x_min = 34.9205
+    x_max = 34.974
+    y_min = 29.523
+    y_max = 29.5735
+    img = mpimg.imread("Eilat.png")
+    # height, width, _ = img.shape
 
-    # img = mpimg.imread("Eilat.png")
+    # x_min = 34.9205
+    # y_min = 29.523
+    # x_max = width/10
+    # y_max = height/10
+
     fig = plt.figure(figsize=(8, 6), dpi=150)
     ax1 = fig.add_subplot(111)
 
@@ -53,8 +61,8 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
     for name in neighborhoods_names:
         for coords in wkt_n_dict[name]:
             coords_n.append(coords)
-        x_n = [coord[0] for coord in coords_n]
-        y_n = [coord[1] for coord in coords_n]
+        x_n = [coord[0]+.00 for coord in coords_n]
+        y_n = [coord[1]+.00 for coord in coords_n]
 
         ax1.plot(x_n, y_n, color='gray')
         ax1.fill(x_n, y_n, color='lightblue', alpha=0.5)
@@ -63,10 +71,10 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
     for index, row in df_pl.iterrows():
         colors = ["lightblue", "blue", "darkblue"]
         weight = row["Weight"]
-        color = colors[weight-1]
+        color = colors[weight - 1]
         x_coord = row["X"]
         y_coord = row["Y"]
-        ax1.scatter(x_coord, y_coord, s=10*weight, color=color)
+        ax1.scatter(x_coord, y_coord, s=10 * weight, color=color)
 
     # x_pl = [coord[0] for coord in coords_pl]
     # y_pl = [coord[1] for coord in coords_pl]
@@ -87,17 +95,23 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m) -> None:
     #         ax1.add_artist(circle)
     #         meters += 200
 
-    # x_img = []
-    # ax1.imshow(img, extent=(x_min+.001, x_max, y_min, y_max))
-    # ax1.set_aspect('equal', adjustable='box')
+    ## IMAGE ##
+    # aspect_ratio = width / height
+    #ax1.set_aspect(aspect_ratio)
+    res1, res2 = (img.shape[1] / x_max, img.shape[0] / x_max)
+    print((x_max - x_min))
+    ax1.imshow(img, extent=(x_min, x_min+(x_max-x_min), y_min, y_min+(y_max-y_min)))
+    #ax1.set_aspect('equal', adjustable='box')
 
-    plt.xlim(x_min, x_max)
-    plt.ylim(y_min, y_max)
+
+    #plt.xlim(x_min, x_max)
+    #plt.ylim(y_min, y_max)
     plt.xlabel("X axis")
     plt.ylabel("Y axis")
     plt.title("Parking Lots and Chargers")
 
     ax1.scatter(x_m, y_m, s=10, color='red')
+
     # plt.legend()
     plt.grid(False)
     plt.show()
