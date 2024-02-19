@@ -9,6 +9,7 @@ from PIL import Image
 from matplotlib import image as mpimg, transforms
 from matplotlib.patches import Circle
 import pandas as pd
+from pandas import DataFrame
 import re
 
 
@@ -25,7 +26,8 @@ def main():
     file_stage_3 = "Stage 3 (Municipal).csv"
     file_stage_4 = "Stage 4 (Residential).csv"
     file_all_stages = "All Stages.csv"
-    file_all_stages_header = ["WKT","name","Neighborhood","Spots","Slow","Medium","Fast","Ultra Fast","kW","X Coordinate","Y Coordinate"]
+    file_all_stages_header = ["WKT", "name", "Neighborhood", "Spots", "Slow", "Medium", "Fast", "Ultra Fast", "kW",
+                              "X Coordinate", "Y Coordinate"]
     stages = [file_stage_1, file_stage_2, file_stage_3, file_stage_4]
     rows = []
     for stage in stages:
@@ -51,6 +53,8 @@ def main():
     df_ls = pd.read_csv("light_stations.csv")
 
     df_stage_list = [df_stage_1, df_stage_2, df_stage_3, df_stage_4, df_confirmed_chargers, df_ls]
+
+    print(type(df_stage_1))
 
     wkt_n_dict = {}
     for index, row in df_n.iterrows():
@@ -134,9 +138,10 @@ def lon_lat_to_km(coord1: tuple, coord2: tuple) -> float:
     lon2 = coord2[1]
     earth_radius = 6371  # km
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-    distance = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2-lon1)) * earth_radius
+    distance = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2 - lon1)) * earth_radius
     # print("distance: ", distance)
     return distance
+
 
 def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
     distances: dict[str: [tuple, str, tuple, float]] = {}
@@ -159,7 +164,7 @@ def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
         x_coord = float(row["X Coordinate"])
         y_coord = float(row["Y Coordinate"])
 
-        ls_info.append([ls_name, x_coord, y_coord])
+        ls_info.append([ls_name, x_coord, y_coord])  # idk why it doesn't like this but it works anyway
 
     for charger_name in list(distances.keys()):
         smallest_distance = sys.maxsize
@@ -183,10 +188,39 @@ def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
     return distances
 
 
+# PLOTTING FUNCTIONS
+
+
+def plot_parking_lots_func(ax, df_parking_lots):
+    pass
+    colors = ["lightblue", "blue", "darkblue"]
+    small_legend: bool = False
+    medium_legend: bool = False
+    large_legend: bool = False
+    for index, row in df_parking_lots.iterrows():
+        weight = row["Weight"]
+        base_dot_size = 15
+        color = colors[weight - 1]
+        x_coord = row["X"]
+        y_coord = row["Y"]
+        if weight == 1 and not small_legend:
+            ax.scatter(x_coord, y_coord, s=base_dot_size * weight, color=colors[0], label="small")
+            small_legend = True
+        elif weight == 2 and not medium_legend and small_legend:
+            ax.scatter(x_coord, y_coord, s=base_dot_size * weight, color=colors[1], label="medium")
+            medium_legend = True
+        elif weight == 3 and not large_legend and small_legend and medium_legend:
+            ax.scatter(x_coord, y_coord, s=base_dot_size * weight, color=colors[2], label="large")
+            large_legend = True
+        else:
+            ax.scatter(x_coord, y_coord, s=base_dot_size * weight, color=color)
+
+
 def plot_current_chargers_func(ax, coords_c, color='magenta', s=20):
     x_c = [coord[0] for coord in coords_c]
     y_c = [coord[1] for coord in coords_c]
     ax.scatter(x_c, y_c, color=color, s=s, label="stage 0 chargers")
+
 
 def plot_stage_1_func(ax, df_stage_1, color='#00FF00', s=20):
     legend: bool = False
@@ -244,32 +278,68 @@ def plot_stage_4_func(ax, df_stage_4, color='orange', s=20):
             ax.scatter(x_coord, y_coord, color=color, s=s)
 
 
-def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coords_ls, stages: list, distances: dict) -> None:
-    plot_title = "Stage One"
+def plot_confirmed_chargers_func(ax, df_confirmed_chargers, annotate_confirmed_chargers_flag):
+    legend: bool = False
+    for index, row in df_confirmed_chargers.iterrows():
+        name = row["name"]
+        x_coord = float(row["X Coordinate"])
+        y_coord = float(row["Y Coordinate"])
 
+        if not legend:
+            ax.scatter(x_coord, y_coord, color='green', s=15, label="suitable lots")
+            legend = True
+        else:
+            ax.scatter(x_coord, y_coord, color='green', s=15)
+        if annotate_confirmed_chargers_flag:
+            print(name)
+            print(x_coord, y_coord)
+            ax.annotate(name, (x_coord, y_coord), textcoords="offset points", xytext=(0, 2), ha='center', fontsize=4)
+
+
+def plot_distances_func(ax, distances):
+    distances_legend: bool = False
+    for value in distances.values():
+        x_distance = [value[0][0], value[2][0]]
+        y_distance = [value[0][1], value[2][1]]
+        if not distances_legend:
+            ax.plot(x_distance, y_distance, linestyle='-', color='orange',
+                    label="distance from charger to nearest light station")
+            distances_legend = True
+        else:
+            ax.plot(x_distance, y_distance, linestyle='-', color='orange')
+
+
+def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coords_ls, stages: list[DataFrame],
+               distances: dict) -> None:
+    plot_title = "Stage Four"
+
+    # DATAFRAMES FROM stages PARAM
     df_confirmed_chargers = stages[4]
     df_stage_1 = stages[0]
     df_stage_2 = stages[1]
     df_stage_3 = stages[2]
     df_stage_4 = stages[3]
 
-    plot_parking_lots = False
-    plot_neighborhoods = False
-    plot_markers = False
-    plot_medians = False
-    plot_current_chargers = False  # Stage 0
-    plot_stage_1 = False
-    plot_stage_2 = True
-    plot_stage_3 = False
-    plot_stage_4 = False
-    plot_light_stations = False
-    plot_confirmed_chargers = False  # not actually confirmed chargers but are lots suitable for EV chargers
-    annotate_confirmed_chargers = False
-    plot_distances = False
+    # BOOLEANS
+    plot_neighborhoods_flag = False
+    plot_parking_lots_flag = False
+    plot_markers_flag = False
+    plot_medians_flag = False
+    plot_current_chargers_flag = False  # Stage 0
+    plot_stage_1_flag = False
+    plot_stage_2_flag = False
+    plot_stage_3_flag = False
+    plot_stage_4_flag = False
+    plot_light_stations_flag = False
+    plot_confirmed_chargers_flag = False  # not actually confirmed chargers but are lots suitable for EV chargers
+    annotate_confirmed_chargers_flag = False
+    plot_distances_flag = False
 
+    # GRAPH INITIALIZATION
     fig = plt.figure(figsize=(8, 6), dpi=150)
-    ax1 = fig.add_subplot(111)
+    ax = fig.add_subplot(111)
 
+    # IMAGE AND GRAPH CONSTRAINTS
     img = np.asarray(Image.open("Eilat2.png"))
     height, width, _ = img.shape
     x_min = 34.92
@@ -284,6 +354,7 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
     # neighborhoods
     marker_coords = [wkt_n_dict[next(iter(wkt_n_dict.keys()))][0], wkt_n_dict[next(iter(wkt_n_dict.keys()))][0],
                      wkt_n_dict[next(iter(wkt_n_dict.keys()))][0], wkt_n_dict[next(iter(wkt_n_dict.keys()))][0]]
+
     coords_n = []
     for name in neighborhoods_names:
         for coords in wkt_n_dict[name]:
@@ -299,117 +370,72 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
         x_n = [coord[0] + .00 for coord in coords_n]
         y_n = [coord[1] + .00 for coord in coords_n]
 
-        if plot_neighborhoods:
-            ax1.plot(x_n, y_n, color='gray')
-            ax1.fill(x_n, y_n, color='lightgray', alpha=0.5)
+        if plot_neighborhoods_flag:
+            ax.plot(x_n, y_n, color='gray')
+            ax.fill(x_n, y_n, color='lightgray', alpha=0.5)
         coords_n = []
 
-    # current chargers
-    if plot_current_chargers:
-        plot_current_chargers_func(ax1, coords_c)
-        # x_c = [coord[0] for coord in coords_c]
-        # y_c = [coord[1] for coord in coords_c]
-        # ax1.scatter(x_c, y_c, color='magenta', s=15, label="current chargers")
-
     # parking lots
-    if plot_parking_lots:
-        colors = ["lightblue", "blue", "darkblue"]
-        small_legend:  bool = False
-        medium_legend: bool = False
-        large_legend:  bool = False
-        for index, row in df_pl.iterrows():
-            weight = row["Weight"]
-            base_dot_size = 15
-            color = colors[weight - 1]
-            x_coord = row["X"]
-            y_coord = row["Y"]
-            if weight == 1 and not small_legend:
-                ax1.scatter(x_coord, y_coord, s=base_dot_size*weight, color=colors[0], label="small")
-                small_legend = True
-            elif weight == 2 and not medium_legend and small_legend:
-                ax1.scatter(x_coord, y_coord, s=base_dot_size*weight, color=colors[1], label="medium")
-                medium_legend = True
-            elif weight == 3 and not large_legend and small_legend and medium_legend:
-                ax1.scatter(x_coord, y_coord, s=base_dot_size*weight, color=colors[2], label="large")
-                large_legend = True
-            else:
-                    ax1.scatter(x_coord, y_coord, s=base_dot_size*weight, color=color)
+    if plot_parking_lots_flag:
+        plot_parking_lots_func(ax, df_pl)
+
+    # current chargers
+    if plot_current_chargers_flag:
+        plot_current_chargers_func(ax, coords_c)
 
     # stages
-    if plot_stage_1:
-        plot_current_chargers_func(ax1, coords_c, s=10)
-        plot_stage_1_func(ax1, df_stage_1)
+    if plot_stage_1_flag:
+        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_stage_1_func(ax, df_stage_1)
 
-    if plot_stage_2:
-        plot_current_chargers_func(ax1, coords_c, s=10)
-        plot_stage_1_func(ax1, df_stage_1, s=10)
-        plot_stage_2_func(ax1, df_stage_2)
+    if plot_stage_2_flag:
+        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_stage_1_func(ax, df_stage_1, s=10)
+        plot_stage_2_func(ax, df_stage_2)
 
-    if plot_stage_3:
-        plot_current_chargers_func(ax1, coords_c, s=10)
-        plot_stage_1_func(ax1, df_stage_1, s=10)
-        plot_stage_2_func(ax1, df_stage_2, s=10)
-        plot_stage_3_func(ax1, df_stage_3)
+    if plot_stage_3_flag:
+        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_stage_1_func(ax, df_stage_1, s=10)
+        plot_stage_2_func(ax, df_stage_2, s=10)
+        plot_stage_3_func(ax, df_stage_3)
 
-    if plot_stage_4:
-        plot_current_chargers_func(ax1, coords_c, s=10)
-        plot_stage_1_func(ax1, df_stage_1, s=10)
-        plot_stage_2_func(ax1, df_stage_2, s=10)
-        plot_stage_3_func(ax1, df_stage_3, s=10)
-        plot_stage_4_func(ax1, df_stage_4)
+    if plot_stage_4_flag:
+        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_stage_1_func(ax, df_stage_1, s=10)
+        plot_stage_2_func(ax, df_stage_2, s=10)
+        plot_stage_3_func(ax, df_stage_3, s=10)
+        plot_stage_4_func(ax, df_stage_4)
 
     # confirmed chargers
-    if plot_confirmed_chargers:
-        confirmed_chargers_legend: bool = False
-        for index, row in df_confirmed_chargers.iterrows():
-            name = row["name"]
-            x_coord = float(row["X Coordinate"])
-            y_coord = float(row["Y Coordinate"])
-
-            if not confirmed_chargers_legend:
-                ax1.scatter(x_coord, y_coord, color='green', s=15, label="suitable lots")
-                confirmed_chargers_legend = True
-            else:
-                ax1.scatter(x_coord, y_coord, color='green', s=15)
-            if annotate_confirmed_chargers:
-                print(name)
-                print(x_coord, y_coord)
-                ax1.annotate(name, (x_coord, y_coord), textcoords="offset points", xytext=(0,2), ha='center', fontsize=4)
-
-    # light stations
-    if plot_light_stations:
-        x_ls = [coord[0] for coord in coords_ls]
-        y_ls = [coord[1] for coord in coords_ls]
-        ax1.scatter(x_ls, y_ls, color='yellow', s=15, label="light station")
+    if plot_confirmed_chargers_flag:
+        plot_confirmed_chargers_func(ax, df_confirmed_chargers, annotate_confirmed_chargers_flag)
 
     # distances to light stations
-    if plot_distances:
-        distances_legend: bool = False
-        for value in distances.values():
-            x_distance = [value[0][0], value[2][0]]
-            y_distance = [value[0][1], value[2][1]]
-            if not distances_legend:
-                ax1.plot(x_distance, y_distance, linestyle='-', color='orange', label="distance from charger to nearest light station")
-                distances_legend = True
-            else:
-                ax1.plot(x_distance, y_distance, linestyle='-', color='orange')
+    if plot_distances_flag:
+        plot_distances_func(ax, )
 
     # median coords
-    if plot_medians:
+    if plot_medians_flag:
         x_m = [coord[0] for coord in coords_m]
         y_m = [coord[1] for coord in coords_m]
-        ax1.scatter(x_m, y_m, color='red', s=15, label="median")
+        ax.scatter(x_m, y_m, color='red', s=15, label="median")
+
+    # light stations
+    if plot_light_stations_flag:
+        x_ls = [coord[0] for coord in coords_ls]
+        y_ls = [coord[1] for coord in coords_ls]
+        ax.scatter(x_ls, y_ls, color='yellow', s=15, label="light station")
 
     # boarder coords/markers for helping with image
-    if plot_markers:
+    if plot_markers_flag:
         x_n = [coord[0] + .00 for coord in marker_coords]
         y_n = [coord[1] + .00 for coord in marker_coords]
-        ax1.scatter(x_n, y_n, color='yellow', s=8)
+        ax.scatter(x_n, y_n, color='yellow', s=8)
 
-    ax1.legend()
+    ax.legend()
 
-    #plt.xlabel("X axis")
-    #plt.ylabel("Y axis")
+    # plt.xlabel("X axis")
+    # plt.ylabel("Y axis")
     plt.title(plot_title)
 
     plt.grid(False)
