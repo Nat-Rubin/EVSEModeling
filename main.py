@@ -2,100 +2,21 @@ import csv
 import math
 import sys
 from math import acos, sin, cos
+from typing import Dict
 
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import numpy as np
 from PIL import Image
-from matplotlib import image as mpimg, transforms
-from matplotlib.patches import Circle
 import pandas as pd
 from pandas import DataFrame
 import re
 
-
-def main():
-    print("Hello, World!")
-    coords_m = []
-    coords_c = []
-    coords_confirmed_chargers = []
-    coords_ls = []
-    neighborhoods_names = []
-
-    file_stage_1 = "Stage 1 (Gas Station).csv"
-    file_stage_2 = "Stage 2 (Shopping Centers).csv"
-    file_stage_3 = "Stage 3 (Municipal).csv"
-    file_stage_4 = "Stage 4 (Residential).csv"
-    file_all_stages = "All Stages.csv"
-    file_all_stages_header = ["WKT", "name", "Neighborhood", "Spots", "Slow", "Medium", "Fast", "Ultra Fast", "kW",
-                              "X Coordinate", "Y Coordinate"]
-    stages = [file_stage_1, file_stage_2, file_stage_3, file_stage_4]
-    rows = []
-    for stage in stages:
-        with open(stage, newline='') as f:
-            reader = csv.reader(f)
-            next(reader)
-            rows.extend(reader)
-
-    with open(file_all_stages, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(file_all_stages_header)
-        writer.writerows(rows)
-
-    df_pl = pd.read_csv("parking_lots.csv")
-    df_m = pd.read_csv("Median Coordinates.csv")
-    df_n = pd.read_csv("neighborhoods.csv")
-    df_c = pd.read_csv("current_chargers.csv")
-    df_stage_1 = pd.read_csv(file_stage_1)
-    df_stage_2 = pd.read_csv(file_stage_2)
-    df_stage_3 = pd.read_csv(file_stage_3)
-    df_stage_4 = pd.read_csv(file_stage_4)
-    df_confirmed_chargers = pd.read_csv(file_all_stages)
-    df_ls = pd.read_csv("light_stations.csv")
-
-    df_stage_list = [df_stage_1, df_stage_2, df_stage_3, df_stage_4, df_confirmed_chargers, df_ls]
-
-    print(type(df_stage_1))
-
-    wkt_n_dict = {}
-    for index, row in df_n.iterrows():
-        name = row["name"]
-        neighborhoods_names.append(name)
-        wkt_n_dict[name]: list[tuple] = []
-        wkt: list[str] = row["WKT"][10:][:-2]
-        wkt = re.sub(r', ', ',', wkt)
-        wkt_as_floats = []
-
-        for coords in wkt.split(","):
-            for coord in coords.split(" "):
-                wkt_as_floats.append(float(coord))
-
-            wkt_n_dict[name].append(tuple(wkt_as_floats))
-            wkt_as_floats = []
-
-    for index, row in df_m.iterrows():
-        x_coord = row["X / Weights"]
-        y_coord = row["Y / Weights"]
-        coords_m.append((x_coord, y_coord))
-
-    for index, row in df_c.iterrows():
-        x_coord = row["X Coordinate"]
-        y_coord = row["Y Coordinate"]
-        coords_c.append((x_coord, y_coord))
-
-    for index, row in df_ls.iterrows():
-        x_coord = row["X Coordinate"]
-        y_coord = row["Y Coordinate"]
-        coords_ls.append((x_coord, y_coord))
-
-    distances = distance_to_light_stations(df_confirmed_chargers, df_ls)
-    distances_to_csv(distances)
-    # num_chargers = count_chargers(df_confirmed_chargers)  # broken
-    # print(num_chargers)
-    graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coords_ls, df_stage_list, distances)
+# TODO: Function Annotations and such
 
 
-# Doesn't work because csv file is so messed up that some points don't have any chargers listed in them
-# Also, probably don't need this
+# Not used and not debugged
 def count_chargers(df_confirmed_chargers) -> tuple:
     num_medium = 0
     num_fast = 0
@@ -139,7 +60,6 @@ def lon_lat_to_km(coord1: tuple, coord2: tuple) -> float:
     earth_radius = 6371  # km
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     distance = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2 - lon1)) * earth_radius
-    # print("distance: ", distance)
     return distance
 
 
@@ -179,8 +99,6 @@ def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
             if distance < smallest_distance:
                 smallest_distance = distance
                 smallest_distance_info = info
-        if charger_name == "Residential2":
-            print(smallest_distance_info)
         distances[charger_name].append(smallest_distance_info[0])
         distances[charger_name].append((smallest_distance_info[1], smallest_distance_info[2]))
         distances[charger_name].append(smallest_distance)
@@ -192,7 +110,6 @@ def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
 
 
 def plot_parking_lots_func(ax, df_parking_lots):
-    pass
     colors = ["lightblue", "blue", "darkblue"]
     small_legend: bool = False
     medium_legend: bool = False
@@ -216,6 +133,7 @@ def plot_parking_lots_func(ax, df_parking_lots):
             ax.scatter(x_coord, y_coord, s=base_dot_size * weight, color=color)
 
 
+# Stage 0
 def plot_current_chargers_func(ax, coords_c, color='magenta', s=20):
     x_c = [coord[0] for coord in coords_c]
     y_c = [coord[1] for coord in coords_c]
@@ -291,8 +209,6 @@ def plot_confirmed_chargers_func(ax, df_confirmed_chargers, annotate_confirmed_c
         else:
             ax.scatter(x_coord, y_coord, color='green', s=15)
         if annotate_confirmed_chargers_flag:
-            print(name)
-            print(x_coord, y_coord)
             ax.annotate(name, (x_coord, y_coord), textcoords="offset points", xytext=(0, 2), ha='center', fontsize=4)
 
 
@@ -309,8 +225,21 @@ def plot_distances_func(ax, distances):
             ax.plot(x_distance, y_distance, linestyle='-', color='orange')
 
 
-def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coords_ls, stages: list[DataFrame],
-               distances: dict) -> None:
+def graph_plot(df_parking_lots: DataFrame, wkt_neighborhoods_dict: dict, neighborhoods_names: list,
+               coords_median_coordinates: list, coords_current_chargers: list, coords_light_stations: list,
+               stages: list[DataFrame], distances: dict) -> None:
+    """
+    This function handles the main graphing elements of the plot
+    :param df_parking_lots: DataFrame of all parking lots
+    :param wkt_neighborhoods_dict: Dictionary of neighborhoods and their coords
+    :param neighborhoods_names: List of neighborhoods' names
+    :param coords_median_coordinates: Median coordinates of the neighborhoods
+    :param coords_current_chargers: Coordinates of the current chargers
+    :param coords_light_stations: Coordinates of the light stations
+    :param stages: List of the DataFrames of the stages
+    :param distances: Dictionary of confirmed chargers separated into stages, as well as all of them at index 4
+    :return: None
+    """
     plot_title = "Stage Four"
 
     # DATAFRAMES FROM stages PARAM
@@ -322,8 +251,8 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
 
     # BOOLEANS
     plot_neighborhoods_flag = False
-    plot_parking_lots_flag = False
     plot_markers_flag = False
+    plot_parking_lots_flag = False
     plot_medians_flag = False
     plot_current_chargers_flag = False  # Stage 0
     plot_stage_1_flag = False
@@ -352,12 +281,12 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
     plt.imshow(img, extent=(x_min, x_max + x_min + .007, y_min, y_max + y_min))
 
     # neighborhoods
-    marker_coords = [wkt_n_dict[next(iter(wkt_n_dict.keys()))][0], wkt_n_dict[next(iter(wkt_n_dict.keys()))][0],
-                     wkt_n_dict[next(iter(wkt_n_dict.keys()))][0], wkt_n_dict[next(iter(wkt_n_dict.keys()))][0]]
+    marker_coords = [wkt_neighborhoods_dict[next(iter(wkt_neighborhoods_dict.keys()))][0], wkt_neighborhoods_dict[next(iter(wkt_neighborhoods_dict.keys()))][0],
+                     wkt_neighborhoods_dict[next(iter(wkt_neighborhoods_dict.keys()))][0], wkt_neighborhoods_dict[next(iter(wkt_neighborhoods_dict.keys()))][0]]
 
     coords_n = []
     for name in neighborhoods_names:
-        for coords in wkt_n_dict[name]:
+        for coords in wkt_neighborhoods_dict[name]:
             if coords[0] < marker_coords[0][0]:
                 marker_coords[0] = coords
             elif coords[0] > marker_coords[1][0]:
@@ -375,32 +304,38 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
             ax.fill(x_n, y_n, color='lightgray', alpha=0.5)
         coords_n = []
 
+    # boarder coords/markers for helping with image
+    if plot_markers_flag:
+        x_n = [coord[0] + .00 for coord in marker_coords]
+        y_n = [coord[1] + .00 for coord in marker_coords]
+        ax.scatter(x_n, y_n, color='yellow', s=8)
+
     # parking lots
     if plot_parking_lots_flag:
-        plot_parking_lots_func(ax, df_pl)
+        plot_parking_lots_func(ax, df_parking_lots)
 
     # current chargers
     if plot_current_chargers_flag:
-        plot_current_chargers_func(ax, coords_c)
+        plot_current_chargers_func(ax, coords_current_chargers)
 
     # stages
     if plot_stage_1_flag:
-        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_current_chargers_func(ax, coords_current_chargers, s=10)
         plot_stage_1_func(ax, df_stage_1)
 
     if plot_stage_2_flag:
-        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_current_chargers_func(ax, coords_current_chargers, s=10)
         plot_stage_1_func(ax, df_stage_1, s=10)
         plot_stage_2_func(ax, df_stage_2)
 
     if plot_stage_3_flag:
-        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_current_chargers_func(ax, coords_current_chargers, s=10)
         plot_stage_1_func(ax, df_stage_1, s=10)
         plot_stage_2_func(ax, df_stage_2, s=10)
         plot_stage_3_func(ax, df_stage_3)
 
     if plot_stage_4_flag:
-        plot_current_chargers_func(ax, coords_c, s=10)
+        plot_current_chargers_func(ax, coords_current_chargers, s=10)
         plot_stage_1_func(ax, df_stage_1, s=10)
         plot_stage_2_func(ax, df_stage_2, s=10)
         plot_stage_3_func(ax, df_stage_3, s=10)
@@ -412,34 +347,117 @@ def graph_plot(df_pl, wkt_n_dict, neighborhoods_names, coords_m, coords_c, coord
 
     # distances to light stations
     if plot_distances_flag:
-        plot_distances_func(ax, )
+        plot_distances_func(ax, distances)
 
     # median coords
     if plot_medians_flag:
-        x_m = [coord[0] for coord in coords_m]
-        y_m = [coord[1] for coord in coords_m]
+        x_m = [coord[0] for coord in coords_median_coordinates]
+        y_m = [coord[1] for coord in coords_median_coordinates]
         ax.scatter(x_m, y_m, color='red', s=15, label="median")
 
     # light stations
     if plot_light_stations_flag:
-        x_ls = [coord[0] for coord in coords_ls]
-        y_ls = [coord[1] for coord in coords_ls]
+        x_ls = [coord[0] for coord in coords_light_stations]
+        y_ls = [coord[1] for coord in coords_light_stations]
         ax.scatter(x_ls, y_ls, color='yellow', s=15, label="light station")
 
-    # boarder coords/markers for helping with image
-    if plot_markers_flag:
-        x_n = [coord[0] + .00 for coord in marker_coords]
-        y_n = [coord[1] + .00 for coord in marker_coords]
-        ax.scatter(x_n, y_n, color='yellow', s=8)
 
     ax.legend()
-
+    # fontprops = fm.FontProperties(size=18)
+    # scalebar = AnchoredSizeBar(ax.transData,
+    #                            20, '20 m', 'lower center',
+    #                            pad=0.1,
+    #                            color='white',
+    #                            frameon=False,
+    #                            size_vertical=1,
+    #                            fontproperties=fontprops)
+    #
+    # ax.add_artist(scalebar)
     # plt.xlabel("X axis")
     # plt.ylabel("Y axis")
     plt.title(plot_title)
-
     plt.grid(False)
     plt.show()
+
+
+def main():
+    print("Hello, World!")
+    coords_median_points = []
+    coords_current_chargers = []
+    coords_confirmed_chargers = []
+    coords_light_stations = []
+    neighborhoods_names = []
+
+    file_stage_1 = "Stage 1 (Gas Station).csv"
+    file_stage_2 = "Stage 2 (Shopping Centers).csv"
+    file_stage_3 = "Stage 3 (Municipal).csv"
+    file_stage_4 = "Stage 4 (Residential).csv"
+    file_all_stages = "All Stages.csv"
+    file_all_stages_header = ["WKT", "name", "Neighborhood", "Spots", "Slow", "Medium", "Fast", "Ultra Fast", "kW",
+                              "X Coordinate", "Y Coordinate"]
+    stages = [file_stage_1, file_stage_2, file_stage_3, file_stage_4]
+    rows = []
+    for stage in stages:
+        with open(stage, newline='') as f:
+            reader = csv.reader(f)
+            next(reader)
+            rows.extend(reader)
+
+    with open(file_all_stages, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(file_all_stages_header)
+        writer.writerows(rows)
+
+    df_parking_lots = pd.read_csv("parking_lots.csv")
+    df_median_coordinates = pd.read_csv("Median Coordinates.csv")
+    df_neighborhoods = pd.read_csv("neighborhoods.csv")
+    df_current_chargers = pd.read_csv("current_chargers.csv")
+    df_stage_1 = pd.read_csv(file_stage_1)
+    df_stage_2 = pd.read_csv(file_stage_2)
+    df_stage_3 = pd.read_csv(file_stage_3)
+    df_stage_4 = pd.read_csv(file_stage_4)
+    df_confirmed_chargers = pd.read_csv(file_all_stages)
+    df_light_stations = pd.read_csv("light_stations.csv")
+
+    df_stage_list = [df_stage_1, df_stage_2, df_stage_3, df_stage_4, df_confirmed_chargers, df_light_stations]
+
+    # extracts coords from wkt name in neighborhoods.csv, stores them as a value as a list of coords (tuple)
+    wkt_neighborhoods_dict: Dict[str, list[tuple]] = {}
+    for index, row in df_neighborhoods.iterrows():
+        name = row["name"]
+        neighborhoods_names.append(name)
+        wkt_neighborhoods_dict[name]: list[tuple] = []
+        wkt: list[str] = row["WKT"][10:][:-2]
+        wkt = re.sub(r', ', ',', wkt)
+        wkt_as_floats = []
+
+        for coords in wkt.split(","):
+            for coord in coords.split(" "):
+                wkt_as_floats.append(float(coord))
+
+            wkt_neighborhoods_dict[name].append(tuple(wkt_as_floats))
+            wkt_as_floats = []
+
+    for index, row in df_median_coordinates.iterrows():
+        x_coord = row["X / Weights"]
+        y_coord = row["Y / Weights"]
+        coords_median_points.append((x_coord, y_coord))
+
+    for index, row in df_current_chargers.iterrows():
+        x_coord = row["X Coordinate"]
+        y_coord = row["Y Coordinate"]
+        coords_current_chargers.append((x_coord, y_coord))
+
+    for index, row in df_light_stations.iterrows():
+        x_coord = row["X Coordinate"]
+        y_coord = row["Y Coordinate"]
+        coords_light_stations.append((x_coord, y_coord))
+
+    distances = distance_to_light_stations(df_confirmed_chargers, df_light_stations)
+    distances_to_csv(distances)
+    # num_chargers = count_chargers(df_confirmed_chargers)  # broken?
+    graph_plot(df_parking_lots, wkt_neighborhoods_dict, neighborhoods_names, coords_median_points,
+               coords_current_chargers, coords_light_stations, df_stage_list, distances)
 
 
 if __name__ == '__main__':
