@@ -13,7 +13,6 @@ import pandas as pd
 from pandas import DataFrame
 import re
 
-# TODO: Function Annotations and such
 
 
 # Not used and not debugged
