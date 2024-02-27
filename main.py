@@ -4,15 +4,12 @@ import sys
 from math import acos, sin, cos
 from typing import Dict
 
-import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import numpy as np
 from PIL import Image
 import pandas as pd
 from pandas import DataFrame
 import re
-
 
 
 # Not used and not debugged
@@ -106,8 +103,6 @@ def distance_to_light_stations(df_confirmed_chargers, df_ls) -> dict:
 
 
 # PLOTTING FUNCTIONS
-
-
 def plot_parking_lots_func(ax, df_parking_lots):
     colors = ["lightblue", "blue", "darkblue"]
     small_legend: bool = False
@@ -248,7 +243,7 @@ def graph_plot(df_parking_lots: DataFrame, wkt_neighborhoods_dict: dict, neighbo
     df_stage_3 = stages[2]
     df_stage_4 = stages[3]
 
-    # BOOLEANS
+    # BOOLEANS/FLAGS
     plot_neighborhoods_flag = False
     plot_markers_flag = False
     plot_parking_lots_flag = False
@@ -360,30 +355,15 @@ def graph_plot(df_parking_lots: DataFrame, wkt_neighborhoods_dict: dict, neighbo
         y_ls = [coord[1] for coord in coords_light_stations]
         ax.scatter(x_ls, y_ls, color='yellow', s=15, label="light station")
 
-
     ax.legend()
-    # fontprops = fm.FontProperties(size=18)
-    # scalebar = AnchoredSizeBar(ax.transData,
-    #                            20, '20 m', 'lower center',
-    #                            pad=0.1,
-    #                            color='white',
-    #                            frameon=False,
-    #                            size_vertical=1,
-    #                            fontproperties=fontprops)
-    #
-    # ax.add_artist(scalebar)
-    # plt.xlabel("X axis")
-    # plt.ylabel("Y axis")
     plt.title(plot_title)
     plt.grid(False)
     plt.show()
 
 
 def main():
-    print("Hello, World!")
     coords_median_points = []
     coords_current_chargers = []
-    coords_confirmed_chargers = []
     coords_light_stations = []
     neighborhoods_names = []
 
